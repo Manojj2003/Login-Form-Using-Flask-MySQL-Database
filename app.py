@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, url_for, session, redirect, flash
+from werkzeug.security import generate_password_hash, check_password_hash
 import mysql.connector
 
 app = Flask(__name__)
 
-# Connect to MySQL database
+
 conn = mysql.connector.connect(
     host='localhost',
     user='root',
@@ -11,13 +12,13 @@ conn = mysql.connector.connect(
     database='register'
 )
 
-# Check MySQL connection
+
 try:
     conn.ping(reconnect=True)
 except Exception as e:
     print(f"Failed to connect to MySQL: {e}")
 
-# Create 'users' table if not exists
+
 with conn.cursor() as cursor:
     try:
         cursor.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -36,7 +37,7 @@ def index():
     if 'register' in request.form:
         if request.method == 'POST':
             uname = request.form["uname"]
-            password = request.form["upass"]
+            password = generate_password_hash(request.form["upass"])
             age = request.form["age"]
             address = request.form["address"]
             contact = request.form["contact"]
@@ -58,9 +59,9 @@ def index():
             password = request.form["upass"]
             try:
                 cur = conn.cursor(dictionary=True)
-                cur.execute("SELECT * FROM users WHERE name=%s AND password=%s", [name, password])
+                cur.execute("SELECT * FROM users WHERE name=%s", [name])
                 res = cur.fetchone()
-                if res:
+                if res and check_password_hash(res['password'], password):
                     session["name"] = res["name"]
                     session["pid"] = res["pid"]
                     return redirect(url_for('user_home'))
@@ -142,5 +143,5 @@ if __name__ == '__main__':
     app.secret_key = '123'
     app.run(debug=True)
 
-# Close MySQL connection when Flask app stops
+
 conn.close()
